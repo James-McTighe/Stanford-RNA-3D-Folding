@@ -3,11 +3,14 @@ import pandas as pd
 
 
 class StanfordRNA():
-    def __init__(self, labels, sequences):
+    def __init__(self, labels: pd.DataFrame, sequences: pd.DataFrame):
         self.labels = labels
         self.sequences = sequences
-
         
+        self.labels = self.get_xyz_dataframe(self.labels)
+        
+        self.labels['ohe'] = self.labels['resname'].apply(self.one_hot_encode)
+        self.sequences['ohe'] = self.sequences['sequence'].apply(self.one_hot_encode)
 
     @staticmethod
     def get_xyz_dataframe(df):
@@ -32,7 +35,7 @@ class StanfordRNA():
 
         # Create a dictionary to store results
         data = []
-
+        
         # Iterate over each unique prefix and extract flattened x, y, z coordinates
 
         unique_ids = df["Unique_ID"].unique()
@@ -63,8 +66,8 @@ class StanfordRNA():
         seq2 = [mapping[i] for i in seq] # assigns a numerical value for each nucleotide in the sequence
         return np.eye(4, dtype=int)[seq2] # returns an array of 3 zeros and a 1 based on the assigned value
     
-    @staticmethod
-    def remove_invalid_rows(df):
+    
+    def remove_invalid_rows(self):
         """
         Removes rows that have any empty coordinates or invalid characters
         This function must be called after get_xyz_dataframe()
@@ -77,20 +80,20 @@ class StanfordRNA():
         
         """
 
-        condition_1 = df['resname'].str.contains('-')
-        condition_2 = df['resname'].str.contains('X')
+        self.labels = self.self.labels
 
-        df = df[~(condition_1) & ~(condition_2)]
+        condition_1 = self.sequences['sequence'].str.contains('-')
+        condition_2 = self.sequences['sequence'].str.contains('X')
 
-        df = df.groupby('Unique_ID').filter(lambda x: (x != '').all().all())
+        self.sequences = self.sequences[~(condition_1) & ~(condition_2)]
 
-        return df
+        self.labels = self.labels[self.labels['Unique_ID'].isin(self.sequences['target_id'])]
+
+        self.labels = self.labels.groupby('Unique_ID').filter(lambda x: (x != '').all().all())
+
     
 
 x = pd.read_csv('stanford-rna-3d-folding/train_labels.csv')
 
-x = StanfordRNA.get_xyz_dataframe(x)
+y = pd.read_csv('stanford-rna-3d-folding/train_sequences.csv')
 
-y = StanfordRNA.remove_invalid_rows(x)
-
-assert x.shape[0] > y.shape[0]
