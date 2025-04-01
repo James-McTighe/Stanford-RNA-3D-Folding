@@ -7,10 +7,12 @@ class StanfordRNA():
         self.labels = labels
         self.sequences = sequences
         
-        self.labels = self.get_xyz_dataframe(self.labels)
-        
+        self.remove_invalid_rows()
+
         self.labels['ohe'] = self.labels['resname'].apply(self.one_hot_encode)
         self.sequences['ohe'] = self.sequences['sequence'].apply(self.one_hot_encode)
+
+        self.labels = self.get_xyz_dataframe(self.labels)
 
     @staticmethod
     def get_xyz_dataframe(df):
@@ -28,10 +30,7 @@ class StanfordRNA():
                     - 'Coordinates': A list of [x, y, z] coordinate triplets for each unique ID.
         """
 
-        # Extract unique ID (first 4 characters of 'ID')
-        string_literal = r'^([^_]+_[^_]+)' # returns all values before the second underscore
-
-        df["Unique_ID"] = df['ID'].str.extract(string_literal, expand=False)
+        
 
         # Create a dictionary to store results
         data = []
@@ -70,7 +69,6 @@ class StanfordRNA():
     def remove_invalid_rows(self):
         """
         Removes rows that have any empty coordinates or invalid characters
-        This function must be called after get_xyz_dataframe()
 
         Arguments:
             df (pd.Dataframe): input data frame of sequences and x,y,z coordinates
@@ -80,12 +78,15 @@ class StanfordRNA():
         
         """
 
-        self.labels = self.self.labels
-
         condition_1 = self.sequences['sequence'].str.contains('-')
         condition_2 = self.sequences['sequence'].str.contains('X')
 
         self.sequences = self.sequences[~(condition_1) & ~(condition_2)]
+
+        # Extract unique ID (first 4 characters of 'ID')
+        string_literal = r'^([^_]+_[^_]+)' # returns all values before the second underscore
+
+        self.labels["Unique_ID"] = self.labels['ID'].str.extract(string_literal, expand=False)
 
         self.labels = self.labels[self.labels['Unique_ID'].isin(self.sequences['target_id'])]
 
@@ -97,3 +98,4 @@ x = pd.read_csv('stanford-rna-3d-folding/train_labels.csv')
 
 y = pd.read_csv('stanford-rna-3d-folding/train_sequences.csv')
 
+z = StanfordRNA(x,y)
